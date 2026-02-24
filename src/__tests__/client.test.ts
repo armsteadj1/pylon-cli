@@ -1,7 +1,11 @@
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { PylonClient } from '../lib/client.js';
 
-const TEST_CONFIG = { csrfToken: 'test-csrf-token', orgID: 'test-org-id' };
+const TEST_CONFIG = {
+  session: 'test-pylon-session',
+  pylonCsrf: 'test-csrf-header.test-csrf-hash',
+  orgID: 'test-org-id',
+};
 
 function makeResponse(body: unknown, ok = true, status = 200) {
   return {
@@ -33,16 +37,10 @@ describe('PylonClient', () => {
 
   describe('query()', () => {
     it('builds correct request (method, URL, headers, body shape)', async () => {
-      fetchMock.mockResolvedValue(
-        makeResponse({ data: { hello: 'world' } })
-      );
+      fetchMock.mockResolvedValue(makeResponse({ data: { hello: 'world' } }));
 
       const client = new PylonClient(TEST_CONFIG);
-      const result = await client.query<{ hello: string }>(
-        'TestOperation',
-        'abc123hash',
-        { myVar: 42 }
-      );
+      const result = await client.query<{ hello: string }>('TestOperation', 'abc123hash', { myVar: 42 });
 
       expect(result).toEqual({ hello: 'world' });
       expect(fetchMock).toHaveBeenCalledOnce();
@@ -53,7 +51,10 @@ describe('PylonClient', () => {
 
       const headers = options.headers as Record<string, string>;
       expect(headers['content-type']).toBe('application/json');
-      expect(headers['x-csrf-token']).toBe('test-csrf-token');
+      // x-csrf-token should be the part BEFORE the "." in pylonCsrf
+      expect(headers['x-csrf-token']).toBe('test-csrf-header');
+      expect(headers['cookie']).toContain('pylon_session=test-pylon-session');
+      expect(headers['cookie']).toContain('pylon_csrf=test-csrf-header.test-csrf-hash');
       expect(headers['origin']).toBe('https://app.usepylon.com');
       expect(headers['x-pylon-request-id']).toBeTruthy();
 
@@ -65,39 +66,23 @@ describe('PylonClient', () => {
     });
 
     it('throws on HTTP error status', async () => {
-      fetchMock.mockResolvedValue(
-        makeResponse('Unauthorized', false, 401)
-      );
-
+      fetchMock.mockResolvedValue(makeResponse('Unauthorized', false, 401));
       const client = new PylonClient(TEST_CONFIG);
-      await expect(
-        client.query('Op', 'hash', {})
-      ).rejects.toThrow('HTTP 401');
+      await expect(client.query('Op', 'hash', {})).rejects.toThrow('HTTP 401');
     });
 
     it('throws on GraphQL errors array', async () => {
       fetchMock.mockResolvedValue(
-        makeResponse({
-          data: null,
-          errors: [{ message: 'Not found' }, { message: 'Forbidden' }],
-        })
+        makeResponse({ data: null, errors: [{ message: 'Not found' }, { message: 'Forbidden' }] })
       );
-
       const client = new PylonClient(TEST_CONFIG);
-      await expect(
-        client.query('Op', 'hash', {})
-      ).rejects.toThrow('Not found; Forbidden');
+      await expect(client.query('Op', 'hash', {})).rejects.toThrow('Not found; Forbidden');
     });
 
     it('throws when data is undefined', async () => {
-      fetchMock.mockResolvedValue(
-        makeResponse({ errors: undefined })
-      );
-
+      fetchMock.mockResolvedValue(makeResponse({ errors: undefined }));
       const client = new PylonClient(TEST_CONFIG);
-      await expect(
-        client.query('Op', 'hash', {})
-      ).rejects.toThrow('No data in response');
+      await expect(client.query('Op', 'hash', {})).rejects.toThrow('No data in response');
     });
   });
 });

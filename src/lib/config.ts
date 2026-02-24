@@ -3,7 +3,11 @@ import { join } from 'path';
 import { readFileSync, writeFileSync, mkdirSync, existsSync, unlinkSync } from 'fs';
 
 export interface PylonConfig {
-  csrfToken: string;
+  /** pylon_session cookie value */
+  session: string;
+  /** pylon_csrf cookie value (full: "<csrfHeader>.<hash>") */
+  pylonCsrf: string;
+  /** orgID — auto-discovered or manually provided */
   orgID: string;
 }
 
@@ -37,10 +41,15 @@ export class ConfigManager {
   static require(): PylonConfig {
     const config = this.read();
     if (!config) {
-      console.error('Not authenticated. Run: pylon auth --csrf-token <token>');
+      console.error('Not authenticated. Run: pylon auth --session <token> --csrf <token>');
       process.exit(1);
     }
     return config;
+  }
+
+  /** The x-csrf-token header value is the part before the "." in pylon_csrf */
+  static csrfHeader(config: PylonConfig): string {
+    return config.pylonCsrf.split('.')[0] ?? config.pylonCsrf;
   }
 
   static mask(token: string): string {
