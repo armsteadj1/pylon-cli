@@ -1,58 +1,73 @@
 # pylon-cli
 
-A read-only CLI for [Pylon](https://usepylon.com) — query issues, contacts, accounts, tasks, and more from your terminal.
+Read-only CLI for [Pylon](https://usepylon.com) — your B2B support platform in the terminal.
 
-## Installation
-
-```bash
-npm install -g @armsteadj1/pylon-cli
-```
-
-## Authentication
+## Install
 
 ```bash
-pylon auth login --csrf-token <token>
+npm i -g @armsteadj1/pylon-cli
 ```
 
-Grab your `x-csrf-token` from browser DevTools (Application → Cookies or Network tab) while logged in to app.usepylon.com.
+## Quick Start
 
-## Usage
+1. Open Pylon in your browser
+2. Open DevTools → Network → any request to `graph.usepylon.com` → copy `x-csrf-token` header
+3. Run: `pylon auth --csrf-token <your-token>`
+4. Run: `pylon issues list`
 
-```bash
-pylon issues list
-pylon contacts list
-pylon accounts list
-pylon tasks list
-pylon kb list
-pylon auth status
-pylon auth logout
-```
+## Commands
 
-Run `pylon --help` or `pylon <command> --help` for full options.
+| Group | Commands |
+|-------|---------|
+| `auth` | login, status, logout |
+| `issues` | list, get, views, view, sla, digest, count |
+| `accounts` | list, get, contacts, issues, projects, highlights, activity |
+| `contacts` | list, get |
+| `features` | list, revenue |
+| `tasks` | list, count |
+| `analytics` | query, dashboards, accounts, users |
+| `kb` | list, ask |
+| `notifications` | list |
+| `announcements` | list |
+| `org` | config |
+| `me` | — |
+| `users` | — |
+
+All commands support `--json` and `--csv` output flags.
+
+## Documentation
+
+- [Authentication](docs/auth.md)
+- [Issues](docs/issues.md)
+- [Accounts](docs/accounts.md)
+- [Contacts](docs/contacts.md)
+- [Feature Requests](docs/features.md)
+- [Tasks](docs/tasks.md)
+- [Analytics](docs/analytics.md)
+- [Knowledge Base](docs/kb.md)
+- [Notifications & Announcements](docs/notifications.md)
+- [Output Formats & Piping](docs/output-formats.md)
+- [Automation & Scripting](docs/automation.md)
 
 ## Development
 
 ```bash
-npm install          # install dependencies
-npm test             # run unit tests (vitest)
-npm run test:watch   # run tests in watch mode
+npm install           # install dependencies
+npm test              # run unit tests (vitest)
+npm run test:watch    # run tests in watch mode
 npm run test:coverage # generate coverage report
-npm run typecheck    # type-check without emitting
-npm run build        # compile TypeScript to dist/
+npm run typecheck     # type-check without emitting
+npm run build         # compile TypeScript to dist/
 ```
 
 ## Releasing
 
 1. Update `version` in `package.json`
-2. Commit the version bump
-3. Tag and push:
-   ```bash
-   git tag v<version>
-   git push origin v<version>
-   ```
-4. GitHub Actions automatically builds, tests, and publishes to npm
+2. `git tag v<version> && git push origin v<version>`
 
-> **Note:** Requires an `NPM_TOKEN` secret configured in GitHub repo settings (Settings → Secrets → Actions).
+GitHub Actions auto-publishes to npm.
+
+> **Note:** Requires an `NPM_TOKEN` secret in GitHub repo settings (Settings → Secrets → Actions).
 
 ## License
 
