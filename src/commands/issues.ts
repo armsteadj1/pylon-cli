@@ -64,7 +64,7 @@ export function buildIssuesCommand(): Command {
     };
 
     const data = await client.query<{
-      paginatedIssues?: { edges?: Array<{ node: IssueNode }> };
+      organization?: { id?: string; issuesPaginated?: { edges?: Array<{ node: IssueNode }> } };
     }>(
       'getPaginatedIssues',
       OPS.getPaginatedIssues,
@@ -82,7 +82,7 @@ export function buildIssuesCommand(): Command {
     );
 
     const nodes =
-      data.paginatedIssues?.edges?.map((e) => e.node) ?? [];
+      data.organization?.issuesPaginated?.edges?.map((e) => e.node) ?? [];
 
     if (opts.json) {
       printJSON(nodes);
@@ -206,7 +206,7 @@ export function buildIssuesCommand(): Command {
     const data = await client.query<{
       issueView?: {
         issues?: Array<IssueNode>;
-        paginatedIssues?: { edges?: Array<{ node: IssueNode }> };
+        organization?: { id?: string; issuesPaginated?: { edges?: Array<{ node: IssueNode }> } };
       };
     }>('getIssueView', OPS.getIssueView, {
       orgID: client.orgID,
@@ -216,7 +216,7 @@ export function buildIssuesCommand(): Command {
     const view = data.issueView;
     const nodes =
       view?.issues ??
-      view?.paginatedIssues?.edges?.map((e) => e.node) ??
+      view?.organization?.issuesPaginated?.edges?.map((e: { node: IssueNode }) => e.node) ??
       [];
 
     if (opts.json) {

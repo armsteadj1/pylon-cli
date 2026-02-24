@@ -20,24 +20,27 @@ export function buildAccountsCommand(): Command {
   ).action(async (opts: { limit: string } & OutputOptions) => {
     const client = new PylonClient();
     const data = await client.query<{
-      accountsPaginated?: {
-        edges?: Array<{
-          node: {
-            id: string;
-            name?: string;
-            domain?: string;
-            tier?: string;
-            mrr?: number;
-            createdAt?: string;
-          };
-        }>;
+      organization?: {
+        id?: string;
+        accountsPaginatedV2?: {
+          edges?: Array<{
+            node: {
+              id: string;
+              name?: string;
+              primaryDomain?: string;
+              tier?: string;
+              mrr?: number;
+              createdAt?: string;
+            };
+          }>;
+        };
       };
     }>('GetAccountsPaginated', OPS.GetAccountsPaginated, {
       orgID: client.orgID,
       first: parseInt(opts.limit, 10),
       input: {
-        includeAnonymous: false,
-        includeInternal: false,
+        includeAnonymous: true,
+        includeInternal: true,
         onlyInternal: false,
         onlyCommunity: false,
         onlyPartner: false,
@@ -50,7 +53,7 @@ export function buildAccountsCommand(): Command {
       includeCustomFields: false,
     });
 
-    const nodes = data.accountsPaginated?.edges?.map((e) => e.node) ?? [];
+    const nodes = data.organization?.accountsPaginatedV2?.edges?.map((e) => e.node) ?? [];
 
     if (opts.json) {
       printJSON(nodes);
@@ -62,7 +65,7 @@ export function buildAccountsCommand(): Command {
       nodes.map((n) => [
         n.id.slice(0, 8),
         safe(n.name),
-        safe(n.domain),
+        safe(n.primaryDomain),
         safe(n.tier),
         safe(n.mrr),
         safe(n.createdAt)?.slice(0, 10),
@@ -80,7 +83,7 @@ export function buildAccountsCommand(): Command {
       account?: {
         id: string;
         name?: string;
-        domain?: string;
+        primaryDomain?: string;
         tier?: string;
         mrr?: number;
         arr?: number;
@@ -111,7 +114,7 @@ export function buildAccountsCommand(): Command {
       {
         id: account.id,
         name: safe(account.name),
-        domain: safe(account.domain),
+        domain: safe(account.primaryDomain),
         website: safe(account.website),
         tier: safe(account.tier),
         mrr: safe(account.mrr),
