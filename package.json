@@ -1,6 +1,6 @@
 {
   "name": "@armsteadj1/pylon-cli",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Read-only CLI for Pylon (usepylon.com)",
   "type": "module",
   "bin": {
@@ -15,7 +15,12 @@
     "test:coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit"
   },
-  "keywords": ["pylon", "cli", "support", "crm"],
+  "keywords": [
+    "pylon",
+    "cli",
+    "support",
+    "crm"
+  ],
   "author": "armsteadj1",
   "license": "MIT",
   "dependencies": {
