@@ -4,3 +4,4 @@ dist/
 *.d.ts.map
 *.json.bak
 pylon-ops.json
+.claude/
