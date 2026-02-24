@@ -32,11 +32,14 @@ export class PylonClient {
       },
     });
 
+    const cookieStr = `pylon_session=${this.config.session}; pylon_csrf=${this.config.pylonCsrf}`;
+
     const response = await fetch(url, {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
-        'x-csrf-token': this.config.csrfToken,
+        'cookie': cookieStr,
+        'x-csrf-token': ConfigManager.csrfHeader(this.config),
         'x-pylon-request-id': uuidv4(),
         'origin': 'https://app.usepylon.com',
         'referer': 'https://app.usepylon.com/',
@@ -69,8 +72,8 @@ export class PylonClient {
   }
 }
 
-export async function discoverOrgID(csrfToken: string): Promise<{ userID: string; orgID: string }> {
-  const tempConfig = { csrfToken, orgID: '' };
+export async function discoverOrgID(session: string, pylonCsrf: string): Promise<{ userID: string; orgID: string }> {
+  const tempConfig = { session, pylonCsrf, orgID: '' };
   const client = new PylonClient(tempConfig);
 
   const data = await client.query<{

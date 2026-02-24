@@ -7,19 +7,18 @@ export function buildAuthCommand(): Command {
   const auth = new Command('auth').description('Authentication management');
 
   auth
-    .command('login')
-    .alias('set')
-    .description('Save CSRF token and auto-discover orgID')
-    .requiredOption('--csrf-token <token>', 'x-csrf-token from browser DevTools')
+    .description('Save session cookies and auto-discover orgID')
+    .requiredOption('--session <token>', 'pylon_session cookie value')
+    .requiredOption('--csrf <token>', 'pylon_csrf cookie value')
     .option('--org-id <orgID>', 'Org ID (auto-discovered if omitted)')
-    .action(async (opts: { csrfToken: string; orgId?: string }) => {
+    .action(async (opts: { session: string; csrf: string; orgId?: string }) => {
       let orgID = opts.orgId ?? '';
       let userID = '';
 
       if (!orgID) {
         process.stdout.write('Discovering orgID... ');
         try {
-          const result = await discoverOrgID(opts.csrfToken);
+          const result = await discoverOrgID(opts.session, opts.csrf);
           orgID = result.orgID;
           userID = result.userID;
           console.log(chalk.green('OK'));
@@ -28,45 +27,15 @@ export function buildAuthCommand(): Command {
           console.error(
             chalk.red(`Error: ${err instanceof Error ? err.message : String(err)}`)
           );
-          console.error(
-            'Tip: pass --org-id <orgID> to skip auto-discovery'
-          );
-          process.exit(1);
-        }
-      }
-
-      ConfigManager.write({ csrfToken: opts.csrfToken, orgID });
-      console.log(chalk.green('Authenticated successfully!'));
-      console.log(`  orgID:  ${orgID}`);
-      if (userID) console.log(`  userID: ${userID}`);
-    });
-
-  // Also support: pylon auth --csrf-token <token>  (top-level shorthand)
-  auth
-    .option('--csrf-token <token>', 'x-csrf-token (shorthand for pylon auth login)')
-    .option('--org-id <orgID>', 'Org ID override')
-    .action(async (opts: { csrfToken?: string; orgId?: string }) => {
-      if (!opts.csrfToken) {
-        auth.help();
-        return;
-      }
-      let orgID = opts.orgId ?? '';
-      if (!orgID) {
-        process.stdout.write('Discovering orgID... ');
-        try {
-          const result = await discoverOrgID(opts.csrfToken);
-          orgID = result.orgID;
-          console.log(chalk.green('OK'));
-        } catch (err) {
-          console.log(chalk.red('FAILED'));
-          console.error(chalk.red(`Error: ${err instanceof Error ? err.message : String(err)}`));
           console.error('Tip: pass --org-id <orgID> to skip auto-discovery');
           process.exit(1);
         }
       }
-      ConfigManager.write({ csrfToken: opts.csrfToken, orgID });
+
+      ConfigManager.write({ session: opts.session, pylonCsrf: opts.csrf, orgID });
       console.log(chalk.green('Authenticated successfully!'));
-      console.log(`  orgID: ${orgID}`);
+      console.log(`  orgID:  ${orgID}`);
+      if (userID) console.log(`  userID: ${userID}`);
     });
 
   auth
@@ -76,11 +45,12 @@ export function buildAuthCommand(): Command {
       const config = ConfigManager.read();
       if (!config) {
         console.log(chalk.yellow('Not authenticated.'));
-        console.log('Run: pylon auth --csrf-token <token>');
+        console.log('Run: pylon auth --session <token> --csrf <token>');
         return;
       }
       console.log(chalk.green('Authenticated'));
-      console.log(`  csrfToken: ${ConfigManager.mask(config.csrfToken)}`);
+      console.log(`  session:   ${ConfigManager.mask(config.session)}`);
+      console.log(`  pylon_csrf: ${ConfigManager.mask(config.pylonCsrf)}`);
       console.log(`  orgID:     ${config.orgID}`);
     });
 

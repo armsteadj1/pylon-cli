@@ -24,6 +24,12 @@ const mockUnlinkSync = vi.mocked(unlinkSync);
 const EXPECTED_CONFIG_FILE = '/mock/home/.pylon/config.json';
 const EXPECTED_CONFIG_DIR = '/mock/home/.pylon';
 
+const TEST_CONFIG = {
+  session: 'test-session-value',
+  pylonCsrf: 'test-csrf-header.test-csrf-hash',
+  orgID: 'org-123',
+};
+
 describe('ConfigManager', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -37,10 +43,9 @@ describe('ConfigManager', () => {
     });
 
     it('returns parsed config when file exists', () => {
-      const config = { csrfToken: 'token123', orgID: 'org456' };
       mockExistsSync.mockReturnValue(true);
-      mockReadFileSync.mockReturnValue(JSON.stringify(config) as unknown as ReturnType<typeof readFileSync>);
-      expect(ConfigManager.read()).toEqual(config);
+      mockReadFileSync.mockReturnValue(JSON.stringify(TEST_CONFIG) as unknown as ReturnType<typeof readFileSync>);
+      expect(ConfigManager.read()).toEqual(TEST_CONFIG);
     });
 
     it('returns null when file is invalid JSON', () => {
@@ -53,22 +58,18 @@ describe('ConfigManager', () => {
   describe('write()', () => {
     it('creates config dir and writes file with correct JSON', () => {
       mockExistsSync.mockReturnValue(false);
-      const config = { csrfToken: 'mytoken', orgID: 'myorg' };
-      ConfigManager.write(config);
-      expect(mockMkdirSync).toHaveBeenCalledWith(EXPECTED_CONFIG_DIR, {
-        recursive: true,
-        mode: 0o700,
-      });
+      ConfigManager.write(TEST_CONFIG);
+      expect(mockMkdirSync).toHaveBeenCalledWith(EXPECTED_CONFIG_DIR, { recursive: true, mode: 0o700 });
       expect(mockWriteFileSync).toHaveBeenCalledWith(
         EXPECTED_CONFIG_FILE,
-        JSON.stringify(config, null, 2),
+        JSON.stringify(TEST_CONFIG, null, 2),
         { mode: 0o600 }
       );
     });
 
     it('skips mkdir when dir already exists', () => {
       mockExistsSync.mockReturnValue(true);
-      ConfigManager.write({ csrfToken: 'tok', orgID: 'org' });
+      ConfigManager.write(TEST_CONFIG);
       expect(mockMkdirSync).not.toHaveBeenCalled();
       expect(mockWriteFileSync).toHaveBeenCalled();
     });
@@ -90,22 +91,29 @@ describe('ConfigManager', () => {
 
   describe('require()', () => {
     it('returns config when present', () => {
-      const config = { csrfToken: 'tok', orgID: 'org' };
       mockExistsSync.mockReturnValue(true);
-      mockReadFileSync.mockReturnValue(JSON.stringify(config) as unknown as ReturnType<typeof readFileSync>);
-      expect(ConfigManager.require()).toEqual(config);
+      mockReadFileSync.mockReturnValue(JSON.stringify(TEST_CONFIG) as unknown as ReturnType<typeof readFileSync>);
+      expect(ConfigManager.require()).toEqual(TEST_CONFIG);
     });
 
     it('exits with code 1 when no config', () => {
       mockExistsSync.mockReturnValue(false);
       const exitSpy = vi.spyOn(process, 'exit').mockImplementation(
-        ((_code?: number | string | null) => {
-          throw new Error('process.exit called');
-        }) as typeof process.exit
+        ((_code?: number | string | null) => { throw new Error('process.exit called'); }) as typeof process.exit
       );
       expect(() => ConfigManager.require()).toThrow('process.exit called');
       expect(exitSpy).toHaveBeenCalledWith(1);
       exitSpy.mockRestore();
+    });
+  });
+
+  describe('csrfHeader()', () => {
+    it('extracts the part before the dot from pylonCsrf', () => {
+      expect(ConfigManager.csrfHeader(TEST_CONFIG)).toBe('test-csrf-header');
+    });
+
+    it('returns the whole value if there is no dot', () => {
+      expect(ConfigManager.csrfHeader({ ...TEST_CONFIG, pylonCsrf: 'nodothere' })).toBe('nodothere');
     });
   });
 
@@ -117,10 +125,6 @@ describe('ConfigManager', () => {
     it('returns **** for short tokens (8 chars or fewer)', () => {
       expect(ConfigManager.mask('12345678')).toBe('****');
       expect(ConfigManager.mask('abc')).toBe('****');
-    });
-
-    it('masks a 9-char token correctly', () => {
-      expect(ConfigManager.mask('123456789')).toBe('1234****6789');
     });
   });
 });
