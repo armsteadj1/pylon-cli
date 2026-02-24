@@ -1,0 +1,34 @@
+{
+  "name": "@armsteadj1/pylon-cli",
+  "version": "0.1.0",
+  "description": "Read-only CLI for Pylon (usepylon.com)",
+  "type": "module",
+  "bin": {
+    "pylon": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "ts-node --esm src/index.ts",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": ["pylon", "cli", "support", "crm"],
+  "author": "armsteadj1",
+  "license": "MIT",
+  "dependencies": {
+    "chalk": "^5.3.0",
+    "cli-table3": "^0.6.3",
+    "commander": "^12.0.0",
+    "uuid": "^9.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/uuid": "^9.0.0",
+    "typescript": "^5.4.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "files": [
+    "dist/**/*"
+  ]
+}
