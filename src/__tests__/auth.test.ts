@@ -1,17 +1,17 @@
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { discoverOrgID } from '../lib/client.js';
 
-function makeJsonResponse(body: unknown) {
+const TEST_SESSION = 'my-pylon-session';
+const TEST_CSRF = 'my-csrf-header.my-csrf-hash';
+
+function makeResponse(body: unknown, ok = true, status = 200) {
   return {
-    ok: true,
-    status: 200,
-    text: () => Promise.resolve(''),
+    ok,
+    status,
+    text: () => Promise.resolve(typeof body === 'string' ? body : ''),
     json: () => Promise.resolve(body),
   };
 }
-
-const TEST_SESSION = 'my-pylon-session';
-const TEST_CSRF = 'my-csrf-token.my-csrf-hash';
 
 describe('discoverOrgID()', () => {
   let fetchMock: ReturnType<typeof vi.fn>;
@@ -25,47 +25,41 @@ describe('discoverOrgID()', () => {
     vi.unstubAllGlobals();
   });
 
-  it('returns userID and orgID from mock response (via organizationID)', async () => {
+  it('calls /auth endpoint and returns userID + orgID', async () => {
     fetchMock.mockResolvedValue(
-      makeJsonResponse({
-        data: { currentUser: { id: 'user-abc', organizationID: 'org-xyz' } },
-      })
+      makeResponse({ user_id: 'user-abc', organization_id: 'org-xyz' })
     );
 
     const result = await discoverOrgID(TEST_SESSION, TEST_CSRF);
     expect(result.userID).toBe('user-abc');
     expect(result.orgID).toBe('org-xyz');
+
+    const [url] = fetchMock.mock.calls[0] as [string];
+    expect(url).toBe('https://graph.usepylon.com/auth');
   });
 
-  it('returns orgID from nested organization.id when organizationID is absent', async () => {
+  it('sends correct cookies and csrf header', async () => {
     fetchMock.mockResolvedValue(
-      makeJsonResponse({
-        data: { currentUser: { id: 'user-def', organization: { id: 'org-nested' } } },
-      })
+      makeResponse({ user_id: 'u1', organization_id: 'o1' })
     );
 
-    const result = await discoverOrgID(TEST_SESSION, TEST_CSRF);
-    expect(result.userID).toBe('user-def');
-    expect(result.orgID).toBe('org-nested');
+    await discoverOrgID(TEST_SESSION, TEST_CSRF);
+
+    const [, options] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const headers = options.headers as Record<string, string>;
+    expect(headers['cookie']).toContain(`pylon_session=${TEST_SESSION}`);
+    expect(headers['cookie']).toContain(`pylon_csrf=${TEST_CSRF}`);
+    // csrf header is the part before the "."
+    expect(headers['x-csrf-token']).toBe('my-csrf-header');
   });
 
-  it('throws when currentUser is null', async () => {
-    fetchMock.mockResolvedValue(
-      makeJsonResponse({ data: { currentUser: null } })
-    );
-
-    await expect(discoverOrgID(TEST_SESSION, TEST_CSRF)).rejects.toThrow(
-      'Could not retrieve current user'
-    );
+  it('throws when organization_id is missing', async () => {
+    fetchMock.mockResolvedValue(makeResponse({ user_id: 'u1' }));
+    await expect(discoverOrgID(TEST_SESSION, TEST_CSRF)).rejects.toThrow('Could not retrieve current user');
   });
 
-  it('throws when orgID cannot be found', async () => {
-    fetchMock.mockResolvedValue(
-      makeJsonResponse({ data: { currentUser: { id: 'user-ghi' } } })
-    );
-
-    await expect(discoverOrgID(TEST_SESSION, TEST_CSRF)).rejects.toThrow(
-      'Could not discover orgID'
-    );
+  it('throws on HTTP error', async () => {
+    fetchMock.mockResolvedValue(makeResponse('Forbidden', false, 403));
+    await expect(discoverOrgID(TEST_SESSION, TEST_CSRF)).rejects.toThrow('HTTP 403');
   });
 });

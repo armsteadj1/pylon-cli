@@ -73,22 +73,31 @@ export class PylonClient {
 }
 
 export async function discoverOrgID(session: string, pylonCsrf: string): Promise<{ userID: string; orgID: string }> {
-  const tempConfig = { session, pylonCsrf, orgID: '' };
-  const client = new PylonClient(tempConfig);
+  const csrfHeader = pylonCsrf.split('.')[0] ?? pylonCsrf;
+  const cookieStr = `pylon_session=${session}; pylon_csrf=${pylonCsrf}`;
 
-  const data = await client.query<{
-    currentUser?: {
-      id: string;
-      organizationID?: string;
-      organization?: { id: string };
-    };
-  }>('getCurrentUser', '35aecbe8df33806477f2153c0edeac91c7fe1c97b844810ba0fe81a272fc4a2b', {});
+  const response = await fetch('https://graph.usepylon.com/auth', {
+    method: 'POST',
+    headers: {
+      'content-length': '0',
+      'cookie': cookieStr,
+      'x-csrf-token': csrfHeader,
+      'x-pylon-request-id': crypto.randomUUID(),
+      'origin': 'https://app.usepylon.com',
+      'referer': 'https://app.usepylon.com/',
+      'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36',
+    },
+  });
 
-  const user = data.currentUser;
-  if (!user) throw new Error('Could not retrieve current user');
+  if (!response.ok) {
+    const text = await response.text().catch(() => '');
+    throw new Error(`HTTP ${response.status}: ${text.slice(0, 200)}`);
+  }
 
-  const orgID = user.organizationID ?? user.organization?.id;
-  if (!orgID) throw new Error('Could not discover orgID from getCurrentUser response');
+  const data = await response.json() as { user_id?: string; organization_id?: string };
 
-  return { userID: user.id, orgID };
+  if (!data.organization_id) throw new Error('Could not retrieve current user');
+  if (!data.user_id) throw new Error('Could not retrieve current user');
+
+  return { userID: data.user_id, orgID: data.organization_id };
 }
