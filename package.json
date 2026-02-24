@@ -1,6 +1,6 @@
 {
   "name": "@armsteadj1/pylon-cli",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Read-only CLI for Pylon (usepylon.com)",
   "type": "module",
   "bin": {

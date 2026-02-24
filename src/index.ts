@@ -61,7 +61,15 @@ program.addCommand(buildOrgCommand());
 program.addCommand(buildMeCommand());
 program.addCommand(buildUsersCommand());
 
-// Kick off update check without blocking
-checkForUpdates().catch(() => undefined);
+// Run: await both the command and the update check so the notice
+// always has a chance to print before the process exits.
+async function main(): Promise<void> {
+  const updateCheck = checkForUpdates();
+  await program.parseAsync(process.argv);
+  await updateCheck;
+}
 
-program.parse(process.argv);
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});
